@@ -1,4 +1,7 @@
-/*  Kelvin Nelson 24/07/2019
+/*  Source: https://create.arduino.cc/projecthub/kelvineyeone/read-pwm-decode-rc-receiver-input-and-apply-fail-safe-6b90eb
+ *
+ *  Kelvin Nelson 24/07/2019
+ *  Yuriy Movchan 15/08/2020 (optimizations)
  *  
  *  Pulse Width Modulation (PWM) decoding of RC Receiver with failsafe
  *  
@@ -199,6 +202,8 @@ const int size_RC_failsafe = sizeof(RC_failsafe) / sizeof(float);
 // FUNCTION USED TO TURN ON THE INTERRUPTS ON THE RELEVANT PINS
 // code from http://playground.arduino.cc/Main/PinChangeInterrupt
 
+volatile uint8_t lastPinB, lastPinC, lastPinD;
+
 void pciSetup(byte pin){
     *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // enable pin
     PCIFR  |= bit (digitalPinToPCICRbit(pin));                   // clear any outstanding interrupt
@@ -233,6 +238,7 @@ void pwmPIN_to_port(){
 // SETUP OF PIN CHANGE INTERRUPTS
 
 void setup_pwmRead(){
+  lastPinB = lastPinC = lastPinD = 0;
   
   for(int i = 0; i < num_ch; i++){              // run through each input pin
     pciSetup(pwmPIN[i]);                        // enable pinchange interrupt for pin
@@ -257,22 +263,25 @@ void setup_pwmRead(){
 // READ INTERRUPTS ON PINS D8-D13: ISR routine detects which pin has changed, and returns PWM pulse width, and pulse repetition period.
 
 ISR(PCINT0_vect){                                                 // this function will run if a pin change is detected on portB
-  
+  uint8_t curentPinB = PINB;                                      // Store current PINB register state
+  uint8_t changedPins = (curentPinB ^ lastPinB);                  // Detect changed pins since last interrupt
+
+  lastPinB = curentPinB;                                          // Store current PINB register state for next interrupt
   pciTime = micros();                                             // Record the time of the PIN change in microseconds
 
-  for (int i = 0; i < num_ch; i++){                               // run through each of the channels
-    if (pwmPIN_port[i] == 0){                                     // if the current channel belongs to portB
-      
-      if(prev_pinState[i] == 0 && PINB & pwmPIN_reg[i]){          // and the pin state has changed from LOW to HIGH (start of pulse)
+  sei();                                                          // Allow interrupts
+
+  for (int i = 0; i < num_ch; i++) {                              // run through each of the channels
+    if ((pwmPIN_port[i] == 0) && (changedPins & pwmPIN_reg[i])) { // if the current channel belongs to portC and state changed
+      if (prev_pinState[i] == 0) {                                // and the pin state has changed from LOW to HIGH (start of pulse)
         prev_pinState[i] = 1;                                     // record pin state
         pwmPeriod[i] = pciTime - pwmTimer[i];                     // calculate the time period, micro sec, between the current and previous pulse
         pwmTimer[i] = pciTime;                                    // record the start time of the current pulse
-      }
-      else if (prev_pinState[i] == 1 && !(PINB & pwmPIN_reg[i])){ // or the pin state has changed from HIGH to LOW (end of pulse)
+      } else {                                                    // or the pin state has changed from HIGH to LOW (end of pulse)
         prev_pinState[i] = 0;                                     // record pin state
         PW[i] = pciTime - pwmTimer[i];                            // calculate the duration of the current pulse
         pwmFlag[i] = HIGH;                                        // flag that new data is available
-        if(i+1 == RC_inputs) RC_data_rdy = HIGH;                  
+        if (i+1 == RC_inputs) RC_data_rdy = HIGH;
       }
     }
   }
@@ -281,22 +290,25 @@ ISR(PCINT0_vect){                                                 // this functi
 // READ INTERRUPTS ON PINS A0-A5: ISR routine detects which pin has changed, and returns PWM pulse width, and pulse repetition period.
 
 ISR(PCINT1_vect){                                                 // this function will run if a pin change is detected on portC
+  uint8_t curentPinC = PINC;                                      // Store current PINC register state
+  uint8_t changedPins = (curentPinC ^ lastPinC);                  // Detect changed pins since last interrupt
 
+  lastPinC = curentPinC;                                          // Store current PINC register state for next interrupt
   pciTime = micros();                                             // Record the time of the PIN change in microseconds
 
-  for (int i = 0; i < num_ch; i++){                               // run through each of the channels
-    if (pwmPIN_port[i] == 1){                                     // if the current channel belongs to portC
-      
-      if(prev_pinState[i] == 0 && PINC & pwmPIN_reg[i]){          // and the pin state has changed from LOW to HIGH (start of pulse)
+  sei();                                                          // Allow interrupts
+
+  for (int i = 0; i < num_ch; i++) {                              // run through each of the channels
+    if ((pwmPIN_port[i] == 1) && (changedPins & pwmPIN_reg[i])) { // if the current channel belongs to portC and state changed
+      if (prev_pinState[i] == 0) {                                // and the pin state has changed from LOW to HIGH (start of pulse)
         prev_pinState[i] = 1;                                     // record pin state
         pwmPeriod[i] = pciTime - pwmTimer[i];                     // calculate the time period, micro sec, between the current and previous pulse
         pwmTimer[i] = pciTime;                                    // record the start time of the current pulse
-      }
-      else if (prev_pinState[i] == 1 && !(PINC & pwmPIN_reg[i])){ // or the pin state has changed from HIGH to LOW (end of pulse)
+      } else {                                                    // or the pin state has changed from HIGH to LOW (end of pulse)
         prev_pinState[i] = 0;                                     // record pin state
-        PW[i] = pciTime - pwmTimer[i];                             // calculate the duration of the current pulse
-        pwmFlag[i] = HIGH;                                         // flag that new data is available
-        if(i+1 == RC_inputs) RC_data_rdy = HIGH;
+        PW[i] = pciTime - pwmTimer[i];                            // calculate the duration of the current pulse
+        pwmFlag[i] = HIGH;                                        // flag that new data is available
+        if (i+1 == RC_inputs) RC_data_rdy = HIGH;
       }
     }
   }
@@ -305,22 +317,25 @@ ISR(PCINT1_vect){                                                 // this functi
 // READ INTERRUPTS ON PINS D0-7: ISR routine detects which pin has changed, and returns PWM pulse width, and pulse repetition period.
 
 ISR(PCINT2_vect){                                                 // this function will run if a pin change is detected on portD
+  uint8_t curentPinD = PIND;                                      // Store current PIND register state
+  uint8_t changedPins = (curentPinD ^ lastPinD);                  // Detect changed pins since last interrupt
 
+  lastPinD = curentPinD;                                          // Store current PIND register state for next interrupt
   pciTime = micros();                                             // Record the time of the PIN change in microseconds
 
-  for (int i = 0; i < num_ch; i++){                               // run through each of the channels
-    if (pwmPIN_port[i] == 2){                                     // if the current channel belongs to portD
-      
-      if(prev_pinState[i] == 0 && PIND & pwmPIN_reg[i]){          // and the pin state has changed from LOW to HIGH (start of pulse)
+  sei();                                                          // Allow interrupts
+
+  for (int i = 0; i < num_ch; i++) {                              // run through each of the channels
+    if ((pwmPIN_port[i] == 2) && (changedPins & pwmPIN_reg[i])) { // if the current channel belongs to portC and state changed
+      if (prev_pinState[i] == 0) {                                // and the pin state has changed from LOW to HIGH (start of pulse)
         prev_pinState[i] = 1;                                     // record pin state
         pwmPeriod[i] = pciTime - pwmTimer[i];                     // calculate the time period, micro sec, between the current and previous pulse
         pwmTimer[i] = pciTime;                                    // record the start time of the current pulse
-      }
-      else if (prev_pinState[i] == 1 && !(PIND & pwmPIN_reg[i])){ // or the pin state has changed from HIGH to LOW (end of pulse)
+      } else {                                                    // or the pin state has changed from HIGH to LOW (end of pulse)
         prev_pinState[i] = 0;                                     // record pin state
         PW[i] = pciTime - pwmTimer[i];                            // calculate the duration of the current pulse
         pwmFlag[i] = HIGH;                                        // flag that new data is available
-        if(i+1 == RC_inputs) RC_data_rdy = HIGH;
+        if (i+1 == RC_inputs) RC_data_rdy = HIGH;
       }
     }
   }
