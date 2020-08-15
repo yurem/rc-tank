@@ -151,10 +151,10 @@
  
 // PWM input pins, any of the following pins can be used: digital 0 - 13 or analog A0 - A5 
 
-const int pwmPIN[]={2,3,4,5,6,7}; // an array to identify the PWM input pins (the array can be any length) 
+const int pwmPIN[]={A0, A1, A2, A3, A4, A5}; // an array to identify the PWM input pins (the array can be any length) 
                                   // first pin is channel 1, second is channel 2...etc
 
-int RC_inputs = 0;                // The number of pins in pwmPIN that are connected to an RC receiver. Addition pins not connected to an RC receiver could be used for any other purpose i.e. detecting the echo pulse on an HC-SR04 ultrasonic distance sensor
+int RC_inputs = 6;                // The number of pins in pwmPIN that are connected to an RC receiver. Addition pins not connected to an RC receiver could be used for any other purpose i.e. detecting the echo pulse on an HC-SR04 ultrasonic distance sensor
                                   // When 0, it will automatically update to the number of pins specified in pwmPIN[] after calling setup_pwmRead().                                                
 // Calibration of each RC channel:
  
@@ -163,15 +163,15 @@ int RC_inputs = 0;                // The number of pins in pwmPIN that are conne
 // FYI: the function print_PWM() will print the raw pulse width data for all the RC channels to the serial port.
 // if the RC_min[], RC_mid[], RC_max[] are empty or have missing data the calibration will default to min 1000us, mid 1500us and max 2000us.
 
-//SANWA 6CH 40MHz with corona RP6D1  
-//                THR     RUD     PIT     BAL     SWITCH  SLIDER
-int RC_min[6] = { 988,    1060,   976,    960,    1056,   1116};
-int RC_mid[6] = { 1472,   1446,   1424,   1398,   1374,   1460};
-int RC_max[6] = { 1800,   1816,   1796,   1764,   1876,   1796};
+// RadioLink AT10 + R12DS
+//                AILE    ELEV    THRO    RUDD    GEAR    FLAP
+int RC_min[6] = { 1088,   1088,   1088,   1088,   1088,   1088};
+int RC_mid[6] = { 1504,   1504,   1504,   1504,   1504,   1504};
+int RC_max[6] = { 1928,   1928,   1928,   1928,   1928,   1928};
 
 // fail safe positions
 
-float RC_failsafe[] = {0.00, 0.00, 1, 0.00, -0.25, 0.00};
+float RC_failsafe[] = {0.00, 0.00, 0.00, 0.00, 0.00, 0.00};
    
 // enter a failsafe position (in the range of -+1) for each RC channel in case radio signal is lost
 // if the array is the incorrect length for the number of RC channels, the failsafe will default to neutral i.e. 0. 
