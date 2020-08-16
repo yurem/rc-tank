@@ -1,9 +1,9 @@
 /*
-   Yuriy Movchan 15/08/2020
-
-   Based on indea implemented in RCArduinoFastLib by DuaneB is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-   http://rcarduino.blogspot.com
-*/
+ *  Yuriy Movchan 15/08/2020
+ *
+ *  Based on indea implemented in RCArduinoFastLib by DuaneB is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
+ *  http://rcarduino.blogspot.com
+ */
 // The first bank of servos uses OC1A - this will disable PWM on digital pin 9 - a small price for 10 fast and smooth servos
 // The second bank of servos uses OC1B - this will disable PWM on digital pin 10 - a small price for 10 more fast and smooth servos
 
