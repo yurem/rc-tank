@@ -3,19 +3,23 @@ unsigned long rc_update;
 const int channels = 6;     // specify the number of receiver channels
 float RC_in[channels];      // an array to store the calibrated input from receiver
 
-// Assign servo indexes
+// LEFT MOTOR STOP PWM [1492:1479], Range 14, Middle: 1485.5
+// RIGHT MOTOR STOP PWM [1487:1473], Rnage 15, Middle: 1480
+
+// Assign servo indexes (PWM output channels indexes)
 #define RC_SERVO_LEFT_IDX  0
 #define RC_SERVO_RIGHT_IDX 1
 #define RC_CAM_SERVO1_IDX  2
 #define RC_CAM_SERVO2_IDX  3
 #define RC_FRAME_SPACE_IDX 4
 
-// Assign channels out pins
+// Assign channels (PWM output pins)
 #define RC_SERVO_LEFT_PIN 3  // ESC
 #define RC_SERVO_RIGHT_PIN 5 // ESC
 #define RC_CAM_SERVO1_PIN 2  // Servo 1
 #define RC_CAM_SERVO2_PIN 4  // Servo 2
 
+// Last PWM index output frame space. Needed to send PWN with 50HZ frequency
 #define RC_FRAME_SPACE_DELAY (RC_FRAME_SPACE_IDX + 1) * 2000 // Maximum wait time for framespace
 
 // Define used hardware
@@ -23,15 +27,14 @@ float RC_in[channels];      // an array to store the calibrated input from recei
 #define PWM_RIGHT_MOTOR_ENABLE 1
 
 // Define special modes
-#define PWM_MOTOR_SETUP 1
+//#define PWM_MOTOR_SETUP 1
 
 void setup()  {
-  setup_pwmRead();
-
   Serial.begin(115200);
 
-  // Attach servo objects, these will generate the correct pulses for driving Electronic speed controllers, servos or other devices
-  // designed to interface directly with RC Receivers
+  setup_pwmRead();
+
+  // Attach servo objects, these will generate the correct pulses for driving ESC, servos or other devices
   #ifdef PWM_LEFT_MOTOR_ENABLE
     attach_pwmMotor(RC_SERVO_LEFT_IDX, RC_SERVO_LEFT_PIN);
   #endif
@@ -51,9 +54,12 @@ void setup()  {
   begin_pwmMotor();
 }
 
+static uint16_t unThrottleIn = 1508;
+static uint16_t unThrottlePercentIn = 1088;
+static uint16_t unLeftRightIn = 1508;
+
 void loop()  {
   now = millis();
-  static uint16_t unThrottleIn;
 
   #ifdef PWM_MOTOR_SETUP
     loop_PwmMotorSetup();
@@ -63,15 +69,29 @@ void loop()  {
       rc_update = now;
   
   //    print_RCpwm();          // uncommment to print raw data from receiver to serial
+      if (PWM_read(1)) {
+        unLeftRightIn = PWM();
+ //     Serial.println(unLeftRightIn);
+      }
+
       if (PWM_read(3)) {
         unThrottleIn = PWM();
+        if (unThrottleIn > 2000) { // Lost signal
+          unThrottleIn = 1508;
+        }
+
         #ifdef PWM_LEFT_MOTOR_ENABLE
-          writeMicroseconds_pwmMotor(RC_SERVO_LEFT_IDX,unThrottleIn-14);
+          writeMicroseconds_pwmMotor(RC_SERVO_LEFT_IDX,unThrottleIn-23);
         #endif
         #ifdef PWM_RIGHT_MOTOR_ENABLE
-          writeMicroseconds_pwmMotor(RC_SERVO_RIGHT_IDX,unThrottleIn-19);
+          writeMicroseconds_pwmMotor(RC_SERVO_RIGHT_IDX,unThrottleIn-28);
         #endif
-      Serial.println(unThrottleIn);
+//      Serial.println(unThrottleIn);
+      }
+      if (PWM_read(5)) {
+        unThrottlePercentIn = PWM();
+        // 1928 (bottom); 1508; 1088 (top) // Stick
+        
       }
       /*
             for (int i = 0; i<channels; i++){       // run through each RC channel
@@ -82,7 +102,7 @@ void loop()  {
               print_decimal2percentage(RC_in[i]);   // uncomment to print calibrated receiver input (+-100%) to serial
             }
       */
-      Serial.println();         // uncomment when printing calibrated receiver input to serial.
+//      Serial.println();         // uncomment when printing calibrated receiver input to serial.
     }
   #endif
 }

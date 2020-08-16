@@ -166,7 +166,7 @@ int RC_inputs = 6;                // The number of pins in pwmPIN that are conne
 // RadioLink AT10 + R12DS
 //                AILE    ELEV    THRO    RUDD    GEAR    FLAP
 int RC_min[6] = { 1088,   1088,   1088,   1088,   1088,   1088};
-int RC_mid[6] = { 1504,   1504,   1504,   1504,   1504,   1504};
+int RC_mid[6] = { 1508,   1508,   1508,   1508,   1508,   1508};
 int RC_max[6] = { 1928,   1928,   1928,   1928,   1928,   1928};
 
 // fail safe positions
