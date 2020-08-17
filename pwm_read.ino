@@ -490,8 +490,8 @@ boolean PWM_read(int CH){
 }
 
 unsigned long PWM_time(){return pin_time;}
-float PWM_period(){return pin_period;}
-float PWM(){return pin_pwm;}
+unsigned long PWM_period(){return pin_period;}
+int PWM(){return pin_pwm;}
 
 float PWM_freq(){
   float freq;
