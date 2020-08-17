@@ -1,3 +1,9 @@
+/*
+ *  Yuriy Movchan 15/08/2020
+ *
+ *  Main process
+ */
+
 unsigned long now;          // timing variables to update data at a regular interval
 unsigned long rc_update;
 const int channels = 6;     // specify the number of receiver channels
@@ -64,7 +70,7 @@ void loop()  {
   #ifdef PWM_MOTOR_SETUP
     loop_PwmMotorSetup();
   #else
-    if (RC_avail() || now - rc_update > 25) { // if RC data is available or 25ms has passed since last update (adjust to suit frame rate of receiver)
+    if (RC_avail() || (now - rc_update > 30)) { // if RC data is available or 25ms has passed since last update (adjust to suit frame rate of receiver)
   
       rc_update = now;
   
@@ -76,17 +82,13 @@ void loop()  {
 
       if (PWM_read(3)) {
         unThrottleIn = PWM();
+/*
         if (unThrottleIn > 2000) { // Lost signal
           unThrottleIn = 1508;
         }
 
-        #ifdef PWM_LEFT_MOTOR_ENABLE
-          writeMicroseconds_pwmMotor(RC_SERVO_LEFT_IDX,unThrottleIn-23);
-        #endif
-        #ifdef PWM_RIGHT_MOTOR_ENABLE
-          writeMicroseconds_pwmMotor(RC_SERVO_RIGHT_IDX,unThrottleIn-28);
-        #endif
 //      Serial.println(unThrottleIn);
+*/
       }
       if (PWM_read(5)) {
         unThrottlePercentIn = PWM();
@@ -104,5 +106,7 @@ void loop()  {
       */
 //      Serial.println();         // uncomment when printing calibrated receiver input to serial.
     }
+    caluclateThrotle(unThrottleIn, unLeftRightIn, unThrottlePercentIn);
+    setEscPWM();
   #endif
 }

@@ -1,5 +1,5 @@
 /*
- *   Yuriy Movchan 16/08/2020
+ *  Yuriy Movchan 16/08/2020
  *
  *  Utility mehods to help determine when bidirectional motor stop/strt, etc...
  */
