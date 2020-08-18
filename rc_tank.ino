@@ -60,11 +60,12 @@ void setup()  {
   begin_pwmMotor();
 }
 
-static uint16_t unThrottleIn = 1508;
-static uint16_t unThrottlePercentIn = 1088;
-static uint16_t unLeftRightIn = 1508;
 
 void loop()  {
+  int unThrottleIn = 0;
+  int unThrottlePercentIn = 0;
+  int unLeftRightIn = 0;
+
   now = millis();
 
   #ifdef PWM_MOTOR_SETUP
@@ -105,8 +106,11 @@ void loop()  {
             }
       */
 //      Serial.println();         // uncomment when printing calibrated receiver input to serial.
+      // Call ESC update methods only if all params are ready
+      if ((unThrottleIn != 0) && (unLeftRightIn != 0) && (unThrottlePercentIn != 0)) {
+        caluclateEscThrotle(unThrottleIn, unLeftRightIn, unThrottlePercentIn);
+        setEscThrotle();
+      }
     }
-    caluclateThrotle(unThrottleIn, unLeftRightIn, unThrottlePercentIn);
-    setEscPWM();
   #endif
 }

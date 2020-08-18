@@ -13,7 +13,10 @@
 #define ESC_THROTLE_LEFT_ADJUST_TO_ZERO -23       // Value need to add to RC PWM to allow adjust with middle ESC
 #define ESC_THROTLE_RIGHT_ADJUST_TO_ZERO -28      // Value need to add to RC PWM to allow adjust with ESC
 
-#define ESC_CONTROL_DEBUG
+// Define ESC motor control ration to define balance between left and right. The value can be between [1..2]
+#define ESC_CONTROL_RATION 2
+
+#define ESC_CONTROL_DEBUG 0
 
 // Default values to stop motors
 const int escLeftStopPwm = RC_THROTLE_MID + ESC_THROTLE_LEFT_ADJUST_TO_ZERO;
@@ -23,7 +26,7 @@ const int escRightStopPwm = RC_THROTLE_MID + ESC_THROTLE_RIGHT_ADJUST_TO_ZERO;
 int escLeftPwm = escLeftStopPwm;
 int escRightPwm = escRightStopPwm;
 
-void caluclateThrotle(int inputThrotle, int inputBalance, int inputThrotleRange) {
+void caluclateEscThrotle(int inputThrotle, int inputBalance, int inputThrotleRange) {
   unsigned int currentEscLeftPwm, currentEscRightPwm;
   unsigned balancePwmChange;
   int inputBalancePercent;
@@ -52,30 +55,30 @@ void caluclateThrotle(int inputThrotle, int inputBalance, int inputThrotleRange)
 
   if (inputThrotle > RC_THROTLE_MID) { // Reverse driving
     // Update according to balance
-    if (inputBalancePercent > 0) {
-      // Reduce left track speed
-      balancePwmChange = (currentEscLeftPwm - RC_THROTLE_MID) * inputBalancePercent / 100;
-      currentEscLeftPwm = currentEscLeftPwm - balancePwmChange;
-    } else {
+    if (inputBalancePercent > 0) { // Stick to right
       // Reduce right track speed
-      balancePwmChange = (RC_THROTLE_MID - currentEscRightPwm) * inputBalancePercent / 100;
-      currentEscRightPwm = currentEscRightPwm - balancePwmChange;
+      balancePwmChange = (currentEscRightPwm - RC_THROTLE_MID) * inputBalancePercent / 100;
+      currentEscRightPwm = currentEscRightPwm - balancePwmChange * ESC_CONTROL_RATION;
+    } else { // Stick to left
+      // Reduce left track speed
+      balancePwmChange = (RC_THROTLE_MID - currentEscLeftPwm) * inputBalancePercent / 100;
+      currentEscLeftPwm = currentEscLeftPwm - balancePwmChange * ESC_CONTROL_RATION;
     }
   } else if (inputThrotle < RC_THROTLE_MID) { // Forward driving
     // Update according to balance
-    if (inputBalancePercent > 0) {
-      // Reduce left track speed
-      balancePwmChange = (RC_THROTLE_MID - currentEscLeftPwm) * inputBalancePercent / 100;
-      currentEscLeftPwm = currentEscLeftPwm + balancePwmChange;
-    } else {
+    if (inputBalancePercent > 0) { // Stick to right
       // Reduce right track speed
-      balancePwmChange = (currentEscRightPwm - RC_THROTLE_MID) * inputBalancePercent / 100;
-      currentEscRightPwm = currentEscRightPwm + balancePwmChange;
+      balancePwmChange = (RC_THROTLE_MID - currentEscRightPwm) * inputBalancePercent / 100;
+      currentEscRightPwm = currentEscRightPwm + balancePwmChange * ESC_CONTROL_RATION;
+    } else { // Stick to left
+      // Reduce left track speed
+      balancePwmChange = (currentEscLeftPwm - RC_THROTLE_MID) * inputBalancePercent / 100;
+      currentEscLeftPwm = currentEscLeftPwm + balancePwmChange * ESC_CONTROL_RATION;
     }
   }
 
   // Apply throtle range
-  throtlePercent = 10;
+  throtlePercent = 20;
   rcThrotleRangeMin = RC_THROTLE_MIN + (RC_THROTLE_MID - RC_THROTLE_MIN) * (100 - throtlePercent) / 100;
   rcThrotleRangeMax = RC_THROTLE_MAX - (RC_THROTLE_MAX - RC_THROTLE_MID) * (100 - throtlePercent) / 100;
 
@@ -98,7 +101,7 @@ void caluclateThrotle(int inputThrotle, int inputBalance, int inputThrotleRange)
 #endif
 }
 
-void setEscPWM() {
+void setEscThrotle() {
 #ifdef PWM_LEFT_MOTOR_ENABLE
   writeMicroseconds_pwmMotor(RC_SERVO_LEFT_IDX, escLeftPwm);
 #endif
