@@ -1,11 +1,14 @@
+#include <FastLED.h>
+
 /*
- *  Yuriy Movchan 15/08/2020
- *
- *  Main process
- */
+    Yuriy Movchan 15/08/2020
+
+    Main process
+*/
 
 unsigned long now;          // timing variables to update data at a regular interval
 unsigned long rc_update;
+unsigned long headlight_update;
 const int channels = 6;     // specify the number of receiver channels
 float RC_in[channels];      // an array to store the calibrated input from receiver
 
@@ -38,25 +41,31 @@ float RC_in[channels];      // an array to store the calibrated input from recei
 void setup()  {
   Serial.begin(115200);
 
+  // Configure headlight
+  configureHeadlight();
+
+  // Configure RC reciever code to read signal from A0..A5
   setup_pwmRead();
 
   // Attach servo objects, these will generate the correct pulses for driving ESC, servos or other devices
-  #ifdef PWM_LEFT_MOTOR_ENABLE
-    attach_pwmMotor(RC_SERVO_LEFT_IDX, RC_SERVO_LEFT_PIN);
-  #endif
-  #ifdef PWM_RIGHT_MOTOR_ENABLE
-    attach_pwmMotor(RC_SERVO_RIGHT_IDX, RC_SERVO_RIGHT_PIN);
-  #endif
+#ifdef PWM_LEFT_MOTOR_ENABLE
+  attach_pwmMotor(RC_SERVO_LEFT_IDX, RC_SERVO_LEFT_PIN);
+#endif
+#ifdef PWM_RIGHT_MOTOR_ENABLE
+  attach_pwmMotor(RC_SERVO_RIGHT_IDX, RC_SERVO_RIGHT_PIN);
+#endif
   attach_pwmMotor(RC_CAM_SERVO1_IDX, RC_CAM_SERVO1_PIN);
   attach_pwmMotor(RC_CAM_SERVO2_IDX, RC_CAM_SERVO2_PIN);
 
-  // Lets set a standard rate of 50 Hz by setting a frame space of 10 * 2000 = 4 Servos + 6 times 2000
+  // Lets set a standard rate of 50 Hz by setting a frame space of 10 * 2000 = 2 ESCs + 2 Servos + 6 times 2000
   setFrameSpaceA_pwmMotor(RC_FRAME_SPACE_IDX, RC_FRAME_SPACE_DELAY);
 
-  #ifdef PWM_MOTOR_SETUP
-    setup_PwmMotorSetup();
-  #endif
+#ifdef PWM_MOTOR_SETUP
+  // Enable ESC control via console commands
+  setup_PwmMotorSetup();
+#endif
 
+  // Enable signal PWM generator on D2..D4 pins
   begin_pwmMotor();
 }
 
@@ -65,52 +74,53 @@ void loop()  {
   int unThrottleIn = 0;
   int unThrottlePercentIn = 0;
   int unLeftRightIn = 0;
+  int unColorIn = 0;
 
   now = millis();
 
-  #ifdef PWM_MOTOR_SETUP
-    loop_PwmMotorSetup();
-  #else
-    if (RC_avail() || (now - rc_update > 30)) { // if RC data is available or 25ms has passed since last update (adjust to suit frame rate of receiver)
-  
-      rc_update = now;
-  
-  //    print_RCpwm();          // uncommment to print raw data from receiver to serial
-      if (PWM_read(1)) {
-        unLeftRightIn = PWM();
- //     Serial.println(unLeftRightIn);
-      }
+#ifndef PWM_MOTOR_SETUP
+  if (RC_avail() || (now - rc_update > 30)) { // if RC data is available or 25ms has passed since last update (adjust to suit frame rate of receiver)
+    rc_update = now;
 
-      if (PWM_read(3)) {
-        unThrottleIn = PWM();
 /*
-        if (unThrottleIn > 2000) { // Lost signal
-          unThrottleIn = 1508;
-        }
+    print_RCpwm();          // uncommment to print raw data from receiver to serial
+    for (int i = 0; i < channels; i++) {    // run through each RC channel
+      int CH = i + 1;
 
-//      Serial.println(unThrottleIn);
+      RC_in[i] = RC_decode(CH);             // decode receiver channel and apply failsafe
+
+      print_decimal2percentage(RC_in[i]);   // uncomment to print calibrated receiver input (+-100%) to serial
+    }
 */
-      }
-      if (PWM_read(5)) {
-        unThrottlePercentIn = PWM();
-        // 1928 (bottom); 1508; 1088 (top) // Stick
-        
-      }
-      /*
-            for (int i = 0; i<channels; i++){       // run through each RC channel
-              int CH = i+1;
-  
-              RC_in[i] = RC_decode(CH);             // decode receiver channel and apply failsafe
-  
-              print_decimal2percentage(RC_in[i]);   // uncomment to print calibrated receiver input (+-100%) to serial
-            }
-      */
-//      Serial.println();         // uncomment when printing calibrated receiver input to serial.
-      // Call ESC update methods only if all params are ready
-      if ((unThrottleIn != 0) && (unLeftRightIn != 0) && (unThrottlePercentIn != 0)) {
-        caluclateEscThrotle(unThrottleIn, unLeftRightIn, unThrottlePercentIn);
-        setEscThrotle();
+    if (PWM_read(1)) {
+      unLeftRightIn = PWM();
+    }
+    if (PWM_read(3)) {
+      unThrottleIn = PWM();
+    }
+    if (PWM_read(5)) {
+      unThrottlePercentIn = PWM();
+    }
+
+    // Call ESC update methods only if all params are ready
+    if ((unThrottleIn != 0) && (unLeftRightIn != 0) && (unThrottlePercentIn != 0)) {
+      caluclateEscThrotle(unThrottleIn, unLeftRightIn, unThrottlePercentIn);
+      setEscThrotle();
+    }
+
+    // Update color only when we read PWM signal and are generating last FRAME_SPACE
+    if ((now - headlight_update > 50) && PWM_read(6) && (getCurrentOutputChannelA() == RC_FRAME_SPACE_IDX)) {
+      unColorIn = PWM();
+      calculateHeadlightColor(unColorIn);
+
+      if (getCurrentOutputChannelA() == RC_FRAME_SPACE_IDX) {
+        setCalculatedHeadlightColor();
+        headlight_update = now;
       }
     }
-  #endif
+  }
+
+#else
+  loop_PwmMotorSetup();
+#endif
 }

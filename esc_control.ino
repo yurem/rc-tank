@@ -4,6 +4,8 @@
     ESC throtle calculator and motor control
 */
 
+// #define ESC_CONTROL_DEBUG 1
+
 #define RC_THROTLE_MIN 1088                      // Minimum throtle PWM
 #define RC_THROTLE_MID 1508                      // Middle throtle PWM
 #define RC_THROTLE_MAX 1928                      // Maximum throtle PWM
@@ -14,9 +16,10 @@
 #define ESC_THROTLE_RIGHT_ADJUST_TO_ZERO -28      // Value need to add to RC PWM to allow adjust with ESC
 
 // Define ESC motor control ration to define balance between left and right. The value can be between [1..2]
-#define ESC_CONTROL_RATION 2
+#define ESC_CONTROL_RATION 1.5
 
-#define ESC_CONTROL_DEBUG 0
+// Define maximum allowed ESC speed in percent
+#define ESC_CONTROL_MAX_SPEED_PERCENT 50
 
 // Default values to stop motors
 const int escLeftStopPwm = RC_THROTLE_MID + ESC_THROTLE_LEFT_ADJUST_TO_ZERO;
@@ -77,8 +80,19 @@ void caluclateEscThrotle(int inputThrotle, int inputBalance, int inputThrotleRan
     }
   }
 
-  // Apply throtle range
-  throtlePercent = 20;
+  // Calculate current speed percent based on one of the 3 stick positions
+  if (inputThrotleRange > RC_THROTLE_MID  + 100) {
+    // 1/3 of maximum throtle
+    throtlePercent = ESC_CONTROL_MAX_SPEED_PERCENT / 3;
+  } else if (inputThrotleRange < RC_THROTLE_MID  - 100) {
+    // Max allowed throtle
+    throtlePercent = ESC_CONTROL_MAX_SPEED_PERCENT;
+  } else {
+    // 2/3 of maximum throtle
+    throtlePercent = ESC_CONTROL_MAX_SPEED_PERCENT * 2 / 3;
+  }
+
+  // Apply throtle percent
   rcThrotleRangeMin = RC_THROTLE_MIN + (RC_THROTLE_MID - RC_THROTLE_MIN) * (100 - throtlePercent) / 100;
   rcThrotleRangeMax = RC_THROTLE_MAX - (RC_THROTLE_MAX - RC_THROTLE_MID) * (100 - throtlePercent) / 100;
 

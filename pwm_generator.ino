@@ -176,7 +176,7 @@ uint16_t microsecondsToTicks_pwmMotor(uint16_t unMicroseconds) {
 }
 
 // Allow to check if the current channel is framespace to execute long routines
-uint8_t getcurrentOutputChannelA() {
+uint8_t getCurrentOutputChannelA() {
   return currentOutputChannelA - 1;
 }
 

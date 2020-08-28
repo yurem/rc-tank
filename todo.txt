@@ -1,0 +1,4 @@
+1. Control servos and allow rotate them only in specific ranges
+2. Read echo sensor and stop tank on distance less than 10 sm
+3. Change lamp to red when disatance less than 30 sm and increase HUE when distance is still decreasing
+4. Use 3 values from RC recivier to determine average PWM. Or remove noise (jump +- 5) from signal.
